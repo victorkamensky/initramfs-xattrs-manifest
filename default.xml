@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+
+  <default revision="master" remote="initramfs" sync-j="4" />
+  <remote name="initramfs"
+          fetch="https://github.com/victorkamensky"
+          review="https://github.com/victorkamensky"
+	  />
+  <remote name="openembedded"
+          fetch="http://git.openembedded.org"
+          review="http://git.openembedded.org"
+          />
+
+  <project path="poky" name="initramfs-xattrs-poky" revision="5095d537d7767e372fc0f83c1e4d4142a9949491" />
+  <project path="meta-selinux" name="initramfs-xattrs-meta-selinux" revision="891b25d6b2c386bc0cf2068ea0a5958a1f3dcc2d" />
+  <project path="meta-openembedded" name="meta-openembedded" remote="openembedded" revision="6e3fc5b8d904d06e3aa77e9ec9968ab37a798188" />
+</manifest>
