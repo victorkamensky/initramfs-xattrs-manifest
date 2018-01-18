@@ -1,0 +1,118 @@
+Overview
+--------
+
+In order to test initramfs with xattrs (extended attributes) we need an
+environment where a lot of xattrs are used. SELinux seems to be a good choice
+for this purpose. SELinux keeps its security context label in security.selinux
+extended attribute. On other hand setting some of extended attributes is
+privileged operation and normally would require root access. If would
+be good to have test environment where like fakeroot technique is used.
+
+For use it seems that basic yocto poky environment along with meta-selinux
+layer present good grounds to test xattrs in initramfs. Basic idea of the
+test: poky + meta-selinux can already build ext4 file that is labeled
+with SELinux xattrs. And if one boot such ext4 image under qemu all
+extended attributes can be inspected with SELinux or attr commands. On other
+hand if the same image would be booted from cpio archive in initramfs mode,
+that image would miss all extended attributes. Only with kernel initramfs
+xattrs changes supporting new newcx format and corresponding cpio changes
+one can build cpio archive which if booted in poky yocto environment would have
+xattrs populated and we can compare cpio based image operation with the
+same image operating with ext4 based emulated disk.
+
+
+Build
+-----
+
+We use repo to organize several yocto component (poky, meta-selinux,
+meta-openembedded) into required build.
+
+o pull initramfs-xattrs repo:
+
+mkdir initramfs-xattrs
+cd initramfs-xattrs
+repo init -u https://github.com/victorkamensky/initramfs-xattrs-manifest.git
+repo sync
+
+o run poky setup script:
+
+source poky/oe-init-build-env
+
+o configure any other OE build parameters in resulting conf/local.conf
+as needed. I.e one may change DL_DIR location to your sources directory if
+you have any. This step can be skipped
+
+o build core-image-selinux-minimal image:
+
+bitbake core-image-selinux-minimal
+
+
+Run
+---
+
+o Run resulting image with cpio.gz booting in initramfs mode:
+
+runqemu qemux86-64 core-image-selinux-minimal ramfs qemuparams="-m 512" bootparams="root= enforcing=0"
+
+options notes:
+
+ramfs - once specified forces runqemu use cpio.gz archive as qemu initrd image
+
+qemuparams="-m 512" - increase target memory size
+
+bootparams="root="  - forces kernel to use initramfs mode for cpio.gz passed as
+                      initrd, if not specified ramfs will be used and not xattrs
+                      will be present since ramfs does not support xattrs. Note
+                      initramfs is tmpfs and it does support xattrs.
+
+bootparams="enforcing=0" - boot image in SELinux permissive mode, meta-selinux
+                      is not in perfect state, and version that we picked does
+                      seem to be able to boot in enforcing mode. But for our
+                      purposes of testing SELinux xattrs permissive mode is good
+                      enough
+
+o Base line image that uses labeled ext4 could be run with the following command:
+
+runqemu qemux86-64 core-image-selinux-minimal ext4 qemuparams="-m 512" bootparams="enforcing=0"
+
+
+Test
+----
+
+For desired parts of target file system dump existing files extended attributes
+with getfattr utility and compare results collected in initramfs image with
+newcx cpio format and ext4 labeled image. Results should be identical.
+
+In initramfs xattrs capable image run:
+
+getfattr -R -h -d -m - /usr 2>/dev/null | awk '/^$/ { printf("\n"); next; } { printf(" %s", $0); }' | sort >& /tmp/list.usr.initramfs.txt
+getfattr -R -h -d -m - /etc 2>/dev/null | awk '/^$/ { printf("\n"); next; } { printf(" %s", $0); }' | sort >& /tmp/list.etc.initramfs.txt
+
+In base ext4 image run:
+
+getfattr -R -h -d -m - /usr 2>/dev/null | awk '/^$/ { printf("\n"); next; } { printf(" %s", $0); }' | sort >& /tmp/list.usr.ext4.txt
+getfattr -R -h -d -m - /etc 2>/dev/null | awk '/^$/ { printf("\n"); next; } { printf(" %s", $0); }' | sort >& /tmp/list.etc.ext4.txt
+
+
+Changes
+-------
+
+This section describe what changes were done for this testing
+environment
+
+o poky "linux-yocto: add initramfs xattrs support patches" - added kernel
+initramfs xattrs patches to linux yocto kernel (linux-yocto_4.12.bb).
+
+o poky "cpio: fix cpio utility to support newcx format" - patch to cpio to
+support newcx format.
+
+o poky "image_types: ramfs create cpio archive in newcx format" - switch poky
+to use cpio-native utility compiled by poky, rather then use host cpio
+
+o meta-selinux "initramfs: need to use xattrs instead of genfscon" - change
+SELinux policy to use fs_use_xattr instead of genfscon for rootfs. Otherwise
+SELinux layer would ignore xattrs present in initramfs and it would use way
+genfscon of labeling files.
+
+Other changes in poky and meta-selinux are contexts: done either to setup this
+testing environment or fix issues in base line
