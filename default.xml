@@ -11,7 +11,7 @@
           review="http://git.openembedded.org"
           />
 
-  <project path="poky" name="initramfs-xattrs-poky" revision="5095d537d7767e372fc0f83c1e4d4142a9949491" />
+  <project path="poky" name="initramfs-xattrs-poky" revision="9796684e26978ab585a219a2ddb04f1563d021d0" />
   <project path="meta-selinux" name="initramfs-xattrs-meta-selinux" revision="891b25d6b2c386bc0cf2068ea0a5958a1f3dcc2d" />
   <project path="meta-openembedded" name="meta-openembedded" remote="openembedded" revision="6e3fc5b8d904d06e3aa77e9ec9968ab37a798188" />
 </manifest>
